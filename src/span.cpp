@@ -358,8 +358,18 @@ std::string Span::BaggageItem(ot::string_view restricted_key) const noexcept {
   return context_.baggageItem(restricted_key);
 }
 
-void Span::Log(
-    std::initializer_list<std::pair<ot::string_view, ot::Value>> /* fields */) noexcept {}
+void Span::Log(std::initializer_list<std::pair<ot::string_view, ot::Value>> fields) noexcept try {
+  json j;
+  for (const auto &kv : fields) {
+    std::string result;
+    apply_visitor(VariantVisitor{result}, kv.second);
+    j[kv.first] = json::parse(result);
+  }
+  j["dd.trace_id"] = traceId();
+  j["dd.span_id"] = spanId();
+  std::cout << j.dump() << std::endl;  // yes I want to flush
+} catch (...) {
+}
 
 OptionalSamplingPriority Span::setSamplingPriority(
     std::unique_ptr<UserSamplingPriority> user_priority) {
